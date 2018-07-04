@@ -15,9 +15,13 @@ def main():
     #predict.py input checkpoint --top_k 3
     parser.add_argument('input', action="store", type=str, help='Path to the input image (required)')
     parser.add_argument('checkpoint', action="store", type=str, help='Model training checkpoint (required)')
+    parser.add_argument('--category_names', action="store", type=str, default='cat_to_name.json', help='The JSON mapping of categories to real names (default = cat_to_name.json)') 
     parser.add_argument('--top_k', action="store", type=int, default=5, help='The number of predictions to return for each input (default = 5)')
     
     inputargs = parser.parse_args()
+    
+    with open(inputargs.category_names, 'r') as f:
+        cat_to_name = json.load(f)
     
     model, optimizer = load_checkpoint(inputargs.checkpoint)
     
@@ -64,7 +68,7 @@ def load_checkpoint(filepath):
     model.class_to_idx = checkpoint['class_to_idx']
     model.load_state_dict(checkpoint['state_dict'])
     
-    optimizer = optim.Adam(model.classifier.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.classifier.parameters(), lr=checkpoint['learn_rate'])
     optimizer.load_state_dict(checkpoint['optimizer'])
 
     return model, optimizer
@@ -172,9 +176,6 @@ def predict(image_path, model):
         
     return probs, classes
 
-with open('cat_to_name.json', 'r') as f:
-    cat_to_name = json.load(f)
-    
 # Call to main function to run the program
 if __name__ == "__main__":
     main()

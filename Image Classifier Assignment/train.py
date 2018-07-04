@@ -85,6 +85,7 @@ def main():
         
     # DONE: Build and train your network
     model = getattr(models, inputargs.arch)(pretrained=True)
+    input_nodes = model.classifier[0].in_features
 
     # Freeze parameters
     for param in model.parameters():
@@ -94,7 +95,7 @@ def main():
     from collections import OrderedDict
     intermediary_nodes = inputargs.hidden_units
     classifier = nn.Sequential(OrderedDict([
-                              ('fc1', nn.Linear(25088, intermediary_nodes)),
+                              ('fc1', nn.Linear(input_nodes, intermediary_nodes)),
                               ('relu', nn.ReLU()),
                               ('dropout', nn.Dropout(p=0.5)),
 
