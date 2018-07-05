@@ -17,6 +17,7 @@ def main():
     parser.add_argument('checkpoint', action="store", type=str, help='Model training checkpoint (required)')
     parser.add_argument('--category_names', action="store", type=str, default='cat_to_name.json', help='The JSON mapping of categories to real names (default = cat_to_name.json)') 
     parser.add_argument('--top_k', action="store", type=int, default=5, help='The number of predictions to return for each input (default = 5)')
+    parser.add_argument('--gpu', action="store", type=bool, default=True, help='Whether to use a GPU (default = True)')
     
     inputargs = parser.parse_args()
     
@@ -78,10 +79,18 @@ def process_image(image):
     ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
         returns an Numpy array
     '''
-    #Resize the image
-    size = 256, 256
-    image = image.resize(size)
+    #Resize the images where the shortest side is 256 pixels, keeping the aspect ratio.
+    factor =  256 / min(image.width, image.width)
+        
+    if image.width < image.height:
+        new_width = 256
+        new_height = round(image.height * factor)
+    else: #height < width
+        new_height = 256
+        new_width = round(image.width * factor)
     
+    image = image.resize((new_height, new_width))
+
     #Define the center box and crop
     boxlen = (256 - 224) / 2
     box = boxlen, boxlen, 256 - boxlen, 256 - boxlen
@@ -131,15 +140,22 @@ def predict(image_path, model):
     
     topk = inputargs.top_k
     
-    cuda = torch.cuda.is_available()
-    if cuda:
-        model.to("cuda:0")
-        device="cuda"
-        #print('Using Cuda')
-    else:
+    cuda = False
+    
+    if inputargs.gpu == False:
         model.to("cpu")
-        device="cpu"
-        #print('Using CPU')
+        device = "cpu"
+        
+    else:
+        cuda = torch.cuda.is_available()
+        if cuda:
+            model.to("cuda:0")
+            device="cuda"
+            #print('Using Cuda')
+        else:
+            model.to("cpu")
+            device="cpu"
+            #print('Using CPU')
 
 
     model.eval()  # Put the model in evaluation mode

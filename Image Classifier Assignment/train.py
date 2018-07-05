@@ -15,6 +15,7 @@ import pandas as pd
 from PIL import Image
 import time
 
+from collections import OrderedDict
 import matplotlib.pyplot as plt
 import os, random
 
@@ -33,10 +34,14 @@ def main():
     parser.add_argument('--hidden_units', action="store", type=int, default=1000, help='The number of hidden units (default = 1000)')
     parser.add_argument('--learning_rate', action="store", type=float, default=0.001, help='The learning rate (default = 0.001)')
     parser.add_argument('--epochs', action="store", type=int, default=5, help='The number of epochs (default = 5)')
-
+    parser.add_argument('--gpu', action="store", type=bool, default=True, help='Whether to use a GPU (default = True)')
+    
     inputargs = parser.parse_args()
     
-   
+    if inputargs.arch not in ['vgg16', 'vgg13', 'alexnet', 'resnet18', 'densenet121']:
+        print('The specified architecture is not available')
+        return
+    
     # Load the Data
     data_dir = inputargs.data_dir
     train_dir = data_dir + '/train'
@@ -85,14 +90,15 @@ def main():
         
     # DONE: Build and train your network
     model = getattr(models, inputargs.arch)(pretrained=True)
-    input_nodes = model.classifier[0].in_features
+    
+    input_nodes_dict = {"vgg16": 25088, "vgg13": 25088, "alexnet": 9216, "densenet121":1024, "resnet18": 512}
+    input_nodes = input_nodes_dict[inputargs.arch]
 
     # Freeze parameters
     for param in model.parameters():
         param.requires_grad = False
 
     # Create a new classifier
-    from collections import OrderedDict
     intermediary_nodes = inputargs.hidden_units
     classifier = nn.Sequential(OrderedDict([
                               ('fc1', nn.Linear(input_nodes, intermediary_nodes)),
@@ -112,15 +118,23 @@ def main():
     learn_rate = inputargs.learning_rate
     optimizer    = optim.Adam(model.classifier.parameters(), lr=learn_rate)
 
-    cuda  = torch.cuda.is_available()
-    if cuda:
-        model.to("cuda:0")
-        device="cuda"
-        print('Using Cuda')
-    else:
+    cuda = False
+    
+    if inputargs.gpu == False:
         model.to("cpu")
         device="cpu"
         print('Using CPU')
+        
+    else:
+        cuda  = torch.cuda.is_available()
+        if cuda:
+            model.to("cuda:0")
+            device="cuda"
+            print('Using Cuda')
+        else:
+            model.to("cpu")
+            device="cpu"
+            print('Using CPU')
 
 
 
